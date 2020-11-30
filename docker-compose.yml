@@ -1,0 +1,121 @@
+version: "3.8"
+
+networks:
+    red:
+
+services:
+
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+    container_name: zookeeper  
+    networks:
+      - red
+
+  kafka:
+    image: wurstmeister/kafka:2.11-1.0.2
+    ports:
+      - "9092:9092"
+    container_name: kafka  
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENERS: INSIDE://:9092,OUTSIDE://:9094
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://:9092,OUTSIDE://:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # Create a topic NAME:PARTITION:REPLICAS
+      KAFKA_CREATE_TOPICS: "flight_delay_classification_request:1:1"
+    depends_on:
+      - zookeeper
+    networks:
+      - red
+      
+  mongodb:
+    image: mongo:4.0.20-xenial
+    ports:
+      - "27017:27017"
+    networks:
+      - red
+    depends_on:
+      - spark-submit
+      - spark-worker-1
+      - spark-master
+
+  mongo-seed:
+    build:
+      context: ./mongo-seed
+    container_name: mongo-seed
+    links:
+      - mongodb
+    networks:
+      - red
+    depends_on:
+      - mongodb
+      
+  # kafka-manager:
+    # image: sheepkiller/kafka-manager:latest
+    # environment:
+      # ZK_HOSTS: "zookeeper:2181"
+    # ports:
+      # - 9000:9000
+    # networks:
+      # - red
+
+  spark-submit:
+    build:
+      context: ./spark-submit
+    container_name: spark-submit
+    ports:
+      - "8082:8082"
+    volumes:
+      - ./practica_big_data_2019/:/practica_big_data_2019      
+    networks:
+      - red
+ 
+  spark-master:
+    build:
+      context: ./spark-master
+    container_name: spark-master
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    environment:
+      - "SPARK_LOCAL_IP=spark-master"
+    networks:
+      - red
+    depends_on:
+      - kafka
+  
+  spark-worker-1:
+    build:
+      context: ./spark-worker
+    container_name: spark-worker-1
+    depends_on:
+      - spark-master
+    ports:
+      - "8081:8081"
+    environment:
+      - "SPARK_MASTER=spark://spark-master:7077"
+      - "constraint:node==spark-worker-1"
+    networks:
+      - red
+ 
+  web:
+    volumes:
+      - ./practica_big_data_2019/:/practica_big_data_2019
+    build:
+      context: .
+    container_name: web
+    ports:
+      - "5000:5000"
+    networks:
+      - red
+    environment:
+      - PROJECT_HOME=./practica_big_data_2019
+    depends_on:
+      - mongodb
+ 
+volumes:
+  practica_big_data_2019:

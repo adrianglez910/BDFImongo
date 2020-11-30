@@ -1,0 +1,14 @@
+FROM bde2020/spark-base:2.4.4-hadoop2.7
+
+COPY start-worker.sh /
+
+ENV SPARK_WORKER_WEBUI_PORT 8081
+ENV SPARK_WORKER_LOG /spark/logs
+ENV SPARK_MASTER "spark://spark-master:7077"
+
+
+#spark-submit
+
+EXPOSE 8081
+
+CMD ["/bin/bash", "/start-worker.sh"]
