@@ -19,6 +19,6 @@ Ahora se podrá iniciar la aplicación a través de docker
 docker-compose up -d
 ```
 Una vez que haya terminado el proceso de instalación ir a la página 
-```
+
 http://localhost:5000/flights/delays/predict_kafka
-```
+
